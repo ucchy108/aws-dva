@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: DynamoDBを構築するサンプルテンプレート
+
+Parameters:
+  EnvType:
+    Description: Which environments to deploy your service.
+    Type: String
+    AllowedValues: ["Dev", "Staging", "Production"]
+    Default: "Dev"
+
+Conditions:
+  ProductionResources: !Equals [ !Ref EnvType, "Production"]
+  StagingResources: !Equals [ !Ref EnvType, "Staging"]
+  DevResources: !Equals [ !Ref EnvType, "Dev"]
+
+Resources:
+  DynamoDBSampleTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !If ["ProductionResources", "sample-table-uchihara", !If ["StagingResources", "staging_sample-table-uchihara", "dev_sample-table-uchihara"]]
+      BillingMode: PROVISIONED
+      SSESpecfication: !If ["ProductionResources", { "SSEnabled" : true }, !Ref "AWS::NoValue"]
+      AttributeDefinitions:
+        - AttributeName: samplePartitionKey
+          AttributeType: S
+        - AttributeName: sampleSortKey
+          AttributeType: S
+      KeySchema:
+        - AttributeName: samplePartitionKey
+          KeyType: HASH
+        - AttributeName: sampleSortKey
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+Outputs:
+  EnvironmentRehion:
+    Description: DynamoDBのリージョン
+    Value: !Sub ${AWS::Region}
+    Export:
+      Name: !Sub SampleDynamoDB-${EnvType}-Region
+  DynamoDBServiceEndpoint:
+    Description: DynamoDBのサービスエンドポイント
+    Value: !Sub https://dynamodb.${AWS::Region}.amazonaws.com
+    Export:
+      Name: !Sub SmapleDynamoDB-${EnvType}-ServiceEndpoint
